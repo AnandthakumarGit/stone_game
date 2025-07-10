@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Break the Window</title>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 40px;
+      overflow: hidden;
+      background-color: #aec3cc;
+    }
+
+    h1 {
+      font-size: 28px;
+      white-space: nowrap;
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      min-height: 10px;
+    }
+
+    #headingText {
+      position: relative;
+      z-index: 1;
+    }
+
+    #windowText, #stoneText {
+      font-size: 26px;
+      font-weight: bold;
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      display: inline-block;
+      transition: all 0.3s;
+    }
+
+    #stoneText {
+      cursor: grab;
+      user-select: none;
+    }
+
+    #windowText span {
+      display: inline-block;
+      animation: explode 1s forwards;
+    }
+
+    @keyframes explode {
+      to {
+        transform: translate(calc(var(--x) * 1px), calc(var(--y) * 1px)) rotate(720deg);
+        opacity: 0;
+      }
+    }
+
+    .game-area {
+      margin: 40px 0;
+      position: relative;
+    }
+
+    .window-box {
+      width: 200px;
+      height: 200px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, #33b9f7, #3595c1);
+      border: 6px solid #333;
+      box-shadow: inset -4px -4px 12px rgba(255, 255, 255, 0.4),
+        inset 4px 4px 12px rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      position: relative;
+      margin-top: 12vh;
+      overflow: hidden;
+    }
+
+    .window-box::before,
+    .window-box::after {
+      content: '';
+      position: absolute;
+      background-color: #333;
+    }
+
+    .window-box::before {
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      transform: translateY(-50%);
+    }
+
+    .window-box::after {
+      left: 50%;
+      top: 0;
+      height: 100%;
+      width: 4px;
+      transform: translateX(-50%);
+    }
+
+    #stoneWrapper {
+      display: inline-block;
+      min-width: 80px;
+      position: relative;
+      vertical-align: bottom;
+    }
+
+    .tools-area {
+      margin-top: 14vh;
+      height: 120px;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      margin-left: 60vh;
+    }
+
+    .draggable {
+      font-size: 50px;
+      cursor: grab;
+      user-select: none;
+      position: absolute;
+      transition: transform 0.2s;
+    }
+
+    #chanceDisplay {
+      margin-top: 10px;
+      font-weight: bold;
+      font-size: 7vh;
+    }
+  </style>
+</head>
+<body>
+  <h1 id="headingText">
+    Break the <span id="windowText">window</span> with the 
+    <span id="stoneWrapper"><span id="stoneText">stone</span></span>
+  </h1>
+
+<!-- <source src="" type="video/mp4"> -->
+
+  <div class="game-area">
+    <div class="window-box" id="glass"></div>
+  </div>
+
+  <div class="tools-area" id="toolsArea">
+    <div class="draggable" style="left: 50px; top: 0px;">🪨</div>
+    <div class="draggable" style="left: 150px; top: 0px;">🪵</div>
+    <div class="draggable" style="left: 250px; top: 0px;">🗿</div>
+    <div class="draggable" style="left: 350px; top: 0px;">🧱</div>
+    <div class="draggable" style="left: 450px; top: 0px;">🪓</div>
+  </div>
+
+  <div id="chanceDisplay">Start the game — You have 3 chances</div>
+
+  <script>
+    const windowText = document.getElementById('windowText');
+    const tools = document.querySelectorAll('.draggable');
+    const toolsArea = document.getElementById('toolsArea');
+    const stoneText = document.getElementById('stoneText');
+    const stoneWrapper = document.getElementById('stoneWrapper');
+    const glass = document.getElementById('glass');
+    const chanceDisplay = document.getElementById('chanceDisplay');
+
+    let dragged = null;
+    let offsetX = 0;
+    let offsetY = 0;
+    let chances = 3;
+    let moved = false;
+
+    const originalPositions = [
+      { left: '50px', top: '0px' },
+      { left: '150px', top: '0px' },
+      { left: '250px', top: '0px' },
+      { left: '350px', top: '0px' },
+      { left: '450px', top: '0px' }
+    ];
+
+    function updateChances() {
+      if (chances > 0) {
+        chanceDisplay.textContent = `You have ${chances} chance${chances === 1 ? '' : 's'} left`;
+      } else {
+        chanceDisplay.textContent = "Game over. Restarting...";
+        setTimeout(resetGame, 1500);
+      }
+    }
+
+    function resetGame() {
+      windowText.innerHTML = "window";
+      stoneWrapper.appendChild(stoneText);
+      stoneText.style.position = 'static';
+      stoneText.style.left = '';
+      stoneText.style.top = '';
+      stoneText.style.zIndex = '';
+      stoneText.style.fontSize = '26px';
+      stoneText.style.fontWeight = 'bold';
+
+      tools.forEach((tool, index) => {
+        tool.style.left = originalPositions[index].left;
+        tool.style.top = originalPositions[index].top;
+      });
+
+      chances = 3;
+      updateChances();
+
+      const crack = document.querySelector('.crack-line');
+      if (crack) crack.remove();
+    }
+
+    function breakWindowText() {
+      const text = windowText.textContent;
+      windowText.innerHTML = '';
+      for (let char of text) {
+        const span = document.createElement('span');
+        span.textContent = char;
+        span.style.setProperty('--x', (Math.random() - 0.5) * 400);
+        span.style.setProperty('--y', (Math.random() - 0.5) * 400);
+        windowText.appendChild(span);
+      }
+
+      const crackLine = document.createElement('div');
+      crackLine.className = 'crack-line';
+      glass.appendChild(crackLine);
+
+      setTimeout(resetGame, 1500);
+    }
+
+    tools.forEach(tool => {
+      tool.addEventListener('mousedown', (e) => {
+        const rect = tool.getBoundingClientRect();
+        const areaRect = toolsArea.getBoundingClientRect();
+
+        offsetX = e.clientX - areaRect.left - parseFloat(tool.style.left || 0);
+        offsetY = e.clientY - areaRect.top - parseFloat(tool.style.top || 0);
+
+        dragged = tool;
+        moved = false;
+        dragged.style.zIndex = 999;
+        e.preventDefault();
+      });
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragged || dragged === stoneText) return;
+
+      const areaRect = toolsArea.getBoundingClientRect();
+      const left = e.clientX - areaRect.left - offsetX;
+      const top = e.clientY - areaRect.top - offsetY;
+
+      dragged.style.left = `${left}px`;
+      dragged.style.top = `${top}px`;
+      moved = true;
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!dragged) return;
+
+      const toolRect = dragged.getBoundingClientRect();
+      const windowRect = windowText.getBoundingClientRect();
+      const glassRect = glass.getBoundingClientRect();
+
+      const isOverText = (
+        toolRect.right > windowRect.left &&
+        toolRect.left < windowRect.right &&
+        toolRect.bottom > windowRect.top &&
+        toolRect.top < windowRect.bottom
+      );
+
+      const isOverGlass = (
+        toolRect.right > glassRect.left &&
+        toolRect.left < glassRect.right &&
+        toolRect.bottom > glassRect.top &&
+        toolRect.top < glassRect.bottom
+      );
+
+      // ✅ FIXED HERE: Only stoneText can break the word "window"
+      if (dragged === stoneText && isOverText) {
+        breakWindowText();
+      } else if (dragged !== stoneText && moved && isOverGlass) {
+        chances--;
+        updateChances();
+      }
+
+      dragged.style.zIndex = '';
+      dragged = null;
+      moved = false;
+    });
+
+    // StoneText Dragging
+    stoneText.addEventListener('mousedown', (e) => {
+      dragged = stoneText;
+      dragged.style.position = 'absolute';
+      dragged.style.zIndex = 999;
+      dragged.style.fontSize = '26px';
+      dragged.style.fontWeight = 'bold';
+      document.body.appendChild(dragged);
+
+      moveAt(e.pageX, e.pageY);
+      function moveAt(pageX, pageY) {
+        dragged.style.left = pageX - dragged.offsetWidth / 2 + 'px';
+        dragged.style.top = pageY - dragged.offsetHeight / 2 + 'px';
+      }
+
+      function onMouseMove(e) {
+        moveAt(e.pageX, e.pageY);
+      }
+
+      document.addEventListener('mousemove', onMouseMove);
+
+      document.addEventListener('mouseup', () => {
+        document.removeEventListener('mousemove', onMouseMove);
+
+        const stoneRect = dragged.getBoundingClientRect();
+        const windowRect = windowText.getBoundingClientRect();
+
+        if (stoneRect.right > windowRect.left &&
+          stoneRect.left < windowRect.right &&
+          stoneRect.bottom > windowRect.top &&
+          stoneRect.top < windowRect.bottom) {
+          breakWindowText();
+        }
+
+        stoneWrapper.appendChild(dragged);
+        dragged.style.position = 'static';
+        dragged.style.left = '';
+        dragged.style.top = '';
+        dragged.style.zIndex = '';
+        dragged = null;
+      }, { once: true });
+
+      e.preventDefault();
+    });
+
+    updateChances();
+  </script>
+</body>
+</html>
